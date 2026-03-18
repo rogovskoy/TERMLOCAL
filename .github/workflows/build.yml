@@ -87,7 +87,7 @@ jobs:
           packages=find_packages(),
           install_requires=[],
           author="rogovskoy",
-          author_email="",
+          author_email="iplaton12@ro.ru",
           description="TERMLOCAL - ${{ github.event.inputs.components }} build",
           long_description="TERMLOCAL package - components: ${{ github.event.inputs.components }}",
           long_description_content_type="text/markdown",
