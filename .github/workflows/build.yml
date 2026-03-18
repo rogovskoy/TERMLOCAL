@@ -162,7 +162,7 @@ jobs:
         zip -r termlocal-v${{ github.event.inputs.version }}-${{ github.event.inputs.components }}.zip $FILES VERSION.txt || true
     
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: termlocal-v${{ github.event.inputs.version }}-${{ github.event.inputs.components }}
         path: |
