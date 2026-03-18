@@ -62,10 +62,10 @@ jobs:
         
         # Создаем __init__.py
         cat > termlocal/__init__.py << EOF
-"""TERMLOCAL - version ${{ github.event.inputs.version }}"""
-__version__ = "${{ github.event.inputs.version }}"
+        """TERMLOCAL - version ${{ github.event.inputs.version }}"""
+        __version__ = "${{ github.event.inputs.version }}"
 
-EOF
+        EOF
         
         # Добавляем импорты в __init__.py в зависимости от выбранных компонентов
         if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "client" ]]; then
@@ -79,58 +79,55 @@ EOF
     - name: Create setup.py
       run: |
         cat > setup.py << EOF
-from setuptools import setup, find_packages
+        from setuptools import setup, find_packages
 
-setup(
-    name="termlocal",
-    version="${{ github.event.inputs.version }}",
-    packages=find_packages(),
-    install_requires=[],
-    author="rogovskoy",
-    author_email="",
-    description="TERMLOCAL - ${{ github.event.inputs.components }} build",
-    long_description="TERMLOCAL package - components: ${{ github.event.inputs.components }}",
-    long_description_content_type="text/markdown",
-    url="https://github.com/rogovskoy/TERMLOCAL",
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "Operating System :: OS Independent",
-    ],
-    python_requires=">=3.6",
-)
-EOF
+        setup(
+          name="termlocal",
+          version="${{ github.event.inputs.version }}",
+          packages=find_packages(),
+          install_requires=[],
+          author="rogovskoy",
+          author_email="",
+          description="TERMLOCAL - ${{ github.event.inputs.components }} build",
+          long_description="TERMLOCAL package - components: ${{ github.event.inputs.components }}",
+          long_description_content_type="text/markdown",
+          url="https://github.com/rogovskoy/TERMLOCAL",
+          classifiers=[
+              "Programming Language :: Python :: 3",
+              "Operating System :: OS Independent",
+          ],
+          python_requires=">=3.6",
+        )
+        EOF
     
     - name: Create pyproject.toml
       run: |
         cat > pyproject.toml << EOF
-[build-system]
-requires = ["setuptools>=45", "wheel"]
-build-backend = "setuptools.build_meta"
+        [build-system]
+        requires = ["setuptools>=45", "wheel"]
+        build-backend = "setuptools.build_meta"
 
-[project]
-name = "termlocal"
-version = "${{ github.event.inputs.version }}"
-description = "TERMLOCAL package"
-readme = "README.md"
-authors = [{name = "rogovskoy"}]
-license = {text = "MIT"}
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
-]
-EOF
+        [project]
+        name = "termlocal"
+        version = "${{ github.event.inputs.version }}"
+        description = "TERMLOCAL package"
+        readme = "README.md"
+        authors = [{name = "rogovskoy"}]
+        license = {text = "MIT"}
+        classifiers = [
+          "Programming Language :: Python :: 3",
+          "Operating System :: OS Independent",
+        ]
+        EOF
     
     - name: Create README.md with build info
       run: |
         cat > README.md << EOF
-# TERMLOCAL
-
-**Version:** ${{ github.event.inputs.version }}
-**Build components:** ${{ github.event.inputs.components }}
-**Build date:** $(date)
-
-## Files included:
-EOF
+        **Version:** ${{ github.event.inputs.version }}
+        **Build components:** ${{ github.event.inputs.components }}
+        **Build date:** $(date)
+        EOF
+        
         
         if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "client" ]]; then
           echo "- client.py" >> README.md
