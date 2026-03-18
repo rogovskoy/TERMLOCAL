@@ -100,37 +100,37 @@ jobs:
         )
         EOF
     
-        - name: Create pyproject.toml
-          run: |
-            cat > pyproject.toml << EOF
-            [build-system]
-            requires = ["setuptools>=61.0", "wheel"]
-            build-backend = "setuptools.build_meta"
+    - name: Create pyproject.toml
+      run: |
+        cat > pyproject.toml << EOF
+        [build-system]
+        requires = ["setuptools>=61.0", "wheel"]
+        build-backend = "setuptools.build_meta"
 
-            [project]
-            name = "termlocal"
-            version = "${{ github.event.inputs.version }}"
-            description = "TERMLOCAL package"
-            readme = "README.md"
-            authors = [
-              {name = "rogovskoy", email = ""}
-            ]
-            license = {text = "MIT"}
-            classifiers = [
-                "Programming Language :: Python :: 3",
-                "License :: OSI Approved :: MIT License",
-                "Operating System :: OS Independent",
-            ]
-            requires-python = ">=3.6"
-            dependencies = []
+        [project]
+        name = "termlocal"
+        version = "${{ github.event.inputs.version }}"
+        description = "TERMLOCAL package"
+        readme = "README.md"
+        authors = [
+          {name = "rogovskoy", email = ""}
+        ]
+        license = {text = "MIT"}
+        classifiers = [
+            "Programming Language :: Python :: 3",
+            "License :: OSI Approved :: MIT License",
+            "Operating System :: OS Independent",
+        ]
+        requires-python = ">=3.6"
+        dependencies = []
 
-            [project.urls]
-            Homepage = "https://github.com/rogovskoy/TERMLOCAL"
-            Repository = "https://github.com/rogovskoy/TERMLOCAL.git"
+        [project.urls]
+        Homepage = "https://github.com/rogovskoy/TERMLOCAL"
+        Repository = "https://github.com/rogovskoy/TERMLOCAL.git"
 
-            [tool.setuptools]
-            packages = ["termlocal"]
-            EOF
+        [tool.setuptools]
+        packages = ["termlocal"]
+        EOF
     
     - name: Create README.md with build info
       run: |
