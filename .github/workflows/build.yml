@@ -26,6 +26,7 @@ on:
           - wheel
           - zip
           - both
+          - binaries
 
 jobs:
   build:
@@ -41,9 +42,9 @@ jobs:
     
     - name: Install tools
       run: |
-        pip install build wheel
+        pip install build wheel setuptools pyinstaller
         sudo apt-get install -y zip
-    
+        
     - name: Prepare files for ${{ github.event.inputs.components }}
       run: |
         # Создаем структуру
@@ -52,22 +53,21 @@ jobs:
         # Копируем выбранные компоненты
         if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "client" ]]; then
           echo "Adding client.py"
-          cp client.py termlocal/ || echo "Warning: client.py not found"
+          cp client.py termlocal/ 2>/dev/null || echo "Warning: client.py not found"
         fi
         
         if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "server" ]]; then
           echo "Adding server.py"
-          cp server.py termlocal/ || echo "Warning: server.py not found"
+          cp server.py termlocal/ 2>/dev/null || echo "Warning: server.py not found"
         fi
         
         # Создаем __init__.py
         cat > termlocal/__init__.py << EOF
         """TERMLOCAL - version ${{ github.event.inputs.version }}"""
         __version__ = "${{ github.event.inputs.version }}"
-
         EOF
         
-        # Добавляем импорты в __init__.py в зависимости от выбранных компонентов
+        # Добавляем импорты в __init__.py
         if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "client" ]]; then
           echo "from .client import *" >> termlocal/__init__.py
         fi
@@ -78,56 +78,43 @@ jobs:
     
     - name: Create setup.py
       run: |
-        cat > setup.py << EOF
-        from setuptools import setup, find_packages
+	      cat > setup.py << EOF
+		    from setuptools import setup, find_packages
+	     	setup(
+	        name="termlocal",
+	    		version="${{ github.event.inputs.version }}",
+      		packages=find_packages(),
+    	  	install_requires=[],
+	      	author="rogovskoy",
+	      	python_requires=">=3.6",
+     		)
+	   		EOF
 
-        setup(
-          name="termlocal",
-          version="${{ github.event.inputs.version }}",
-          packages=find_packages(),
-          install_requires=[],
-          author="rogovskoy",
-          author_email="iplaton12@ro.ru",
-          description="TERMLOCAL - ${{ github.event.inputs.components }} build",
-          long_description="TERMLOCAL package - components: ${{ github.event.inputs.components }}",
-          long_description_content_type="text/markdown",
-          url="https://github.com/rogovskoy/TERMLOCAL",
-          classifiers=[
-              "Programming Language :: Python :: 3",
-              "Operating System :: OS Independent",
-          ],
-          python_requires=">=3.6",
-        )
-        EOF
-    
     - name: Create pyproject.toml
       run: |
         cat > pyproject.toml << EOF
-        [build-system]
-        requires = ["setuptools>=61.0", "wheel"]
-        build-backend = "setuptools.build_meta"
-
-        [project]
-        name = "termlocal"
-        version = "${{ github.event.inputs.version }}"
-        description = "TERMLOCAL package"
-        readme = "README.md"
-        authors = [
-          {name = "rogovskoy", email = "iplaton12@ro.ru"}
-        ]
-        license = {text = "MIT"}
-        classifiers = [
-            "Programming Language :: Python :: 3",
-            "License :: OSI Approved :: MIT License",
-            "Operating System :: OS Independent",
+    		[build-system]
+    		requires = ["setuptools>=61.0", "wheel"]
+    		build-backend = "setuptools.build_meta"
+	   	  [project]
+	    	name = "termlocal"
+    		version = "${{ github.event.inputs.version }}"
+	    	description = "TERMLOCAL package"
+    		readme = "README.md"
+	    	authors = [
+		      {name = "rogovskoy", email = "iplaton12@ro.ru"}
+	    	]
+	    	license = {text = "MIT"}
+	    	classifiers = [
+		      "Programming Language :: Python :: 3",
+          "License :: OSI Approved :: MIT License",
+          "Operating System :: OS Independent",
         ]
         requires-python = ">=3.6"
         dependencies = []
-
-        [project.urls]
-        Homepage = "https://github.com/rogovskoy/TERMLOCAL"
+    		[project.urls]
+    		Homepage = "https://github.com/rogovskoy/TERMLOCAL"
         Repository = "https://github.com/rogovskoy/TERMLOCAL.git"
-
         [tool.setuptools]
         packages = ["termlocal"]
         EOF
@@ -135,11 +122,14 @@ jobs:
     - name: Create README.md with build info
       run: |
         cat > README.md << EOF
-        **Version:** ${{ github.event.inputs.version }}
-        **Build components:** ${{ github.event.inputs.components }}
-        **Build date:** $(date)
-        EOF
-        
+	    	# TERMLOCAL
+		
+    		**Version:** ${{ github.event.inputs.version }}
+	    	**Build components:** ${{ github.event.inputs.components }}
+	    	**Build date:** $(date)
+		
+    		## Files included:
+	    	EOF
         
         if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "client" ]]; then
           echo "- client.py" >> README.md
@@ -156,22 +146,79 @@ jobs:
     - name: Build ZIP package
       if: ${{ github.event.inputs.package_format == 'zip' || github.event.inputs.package_format == 'both' }}
       run: |
-        # Создаем ZIP с выбранными файлами
-        FILES=""
-        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "client" ]]; then
-          FILES="$FILES client.py"
-        fi
-        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "server" ]]; then
-          FILES="$FILES server.py"
-        fi
-        
         # Создаем информационный файл
         echo "TERMLOCAL v${{ github.event.inputs.version }}" > VERSION.txt
         echo "Components: ${{ github.event.inputs.components }}" >> VERSION.txt
         echo "Build date: $(date)" >> VERSION.txt
         
+        # Создаем ZIP с выбранными файлами
+        FILES="VERSION.txt"
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "client" ]]; then
+          if [ -f client.py ]; then
+            FILES="$FILES client.py"
+          fi
+        fi
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "server" ]]; then
+          if [ -f server.py ]; then
+            FILES="$FILES server.py"
+          fi
+        fi
+        
         # Пакуем
-        zip -r termlocal-v${{ github.event.inputs.version }}-${{ github.event.inputs.components }}.zip $FILES VERSION.txt || true
+        zip -r termlocal-v${{ github.event.inputs.version }}-${{ github.event.inputs.components }}.zip $FILES
+    
+    - name: Build Linux/Unix binaries
+      if: ${{ github.event.inputs.package_format == 'binaries' }}
+      run: |
+        # Создаем папку для бинарников
+        mkdir -p dist/binaries/linux
+        
+        # Сборка клиента
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "client" ]]; then
+          echo "Building client binary for Linux..."
+          pyinstaller --onefile --name termlocal-client client.py
+          cp dist/termlocal-client dist/binaries/linux/
+        fi
+        
+        # Сборка сервера
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "server" ]]; then
+          echo "Building server binary for Linux..."
+          pyinstaller --onefile --name termlocal-server server.py
+          cp dist/termlocal-server dist/binaries/linux/
+        fi
+        
+        # Создаем архив с бинарниками
+        cd dist/binaries
+        tar -czf termlocal-linux-v${{ github.event.inputs.version }}.tar.gz linux/
+        cd ../..
+    
+    - name: Build Windows executable
+      if: ${{ github.event.inputs.package_format == 'binaries' }}
+      run: |
+        # Устанавливаем зависимости для кросс-компиляции
+        pip install pyinstaller
+        
+        # Создаем папку для Windows бинарников
+        mkdir -p dist/binaries/windows
+        
+        # Сборка клиента для Windows
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "client" ]]; then
+          echo "Building client executable for Windows..."
+          pyinstaller --onefile --name termlocal-client.exe client.py
+          cp dist/termlocal-client.exe dist/binaries/windows/
+        fi
+        
+        # Сборка сервера для Windows
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "server" ]]; then
+          echo "Building server executable for Windows..."
+          pyinstaller --onefile --name termlocal-server.exe server.py
+          cp dist/termlocal-server.exe dist/binaries/windows/
+        fi
+        
+        # Создаем архив с Windows бинарниками
+        cd dist/binaries
+        zip -r termlocal-windows-v${{ github.event.inputs.version }}.zip windows/
+        cd ../..
     
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
@@ -184,9 +231,260 @@ jobs:
     
     - name: Create release info
       run: |
-        echo "## Build Complete" > $GITHUB_STEP_SUMMARY
+        echo "## Build Complete" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "- **Version:** ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Components:** ${{ github.event.inputs.components }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Format:** ${{ github.event.inputs.package_format }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Build time:** $(date)" >> $GITHUB_STEP_SUMMARY
+        
+        if [[ "${{ github.event.inputs.package_format }}" == "binaries" ]]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Binaries built:" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux/Unix binaries (tar.gz)" >> $GITHUB_STEP_SUMMARY
+          echo "- Windows executables (zip)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To run on Linux:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "tar -xzf termlocal-linux-v${{ github.event.inputs.version }}.tar.gz" >> $GITHUB_STEP_SUMMARY
+          echo "cd linux" >> $GITHUB_STEP_SUMMARY
+          echo "./termlocal-server  # запуск сервера" >> $GITHUB_STEP_SUMMARY
+          echo "./termlocal-client  # запуск клиента" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To run on Windows:" >> $GITHUB_STEP_SUMMARY
+          echo "- Распакуй termlocal-windows-v${{ github.event.inputs.version }}.zip" >> $GITHUB_STEP_SUMMARY
+          echo "- Запусти termlocal-server.exe или termlocal-client.exe" >> $GITHUB_STEP_SUMMARY
+        fi		    {name = "rogovskoy", email = "iplaton12@ro.ru"}
+		]
+		license = {text = "MIT"}
+		classifiers = [
+		    "Programming Language :: Python :: 3",
+		    "License :: OSI Approved :: MIT License",
+		    "Operating System :: OS Independent",
+		]
+		requires-python = ">=3.6"
+		dependencies = []
+		
+		[project.urls]
+		Homepage = "https://github.com/rogovskoy/TERMLOCAL"
+		Repository = "https://github.com/rogovskoy/TERMLOCAL.git"
+		
+		[tool.setuptools]
+		packages = ["termlocal"]
+		EOF
+    
+    - name: Create README.md with build info
+      run: |
+        cat > README.md << EOF
+		# TERMLOCAL
+		
+		**Version:** ${{ github.event.inputs.version }}
+		**Build components:** ${{ github.event.inputs.components }}
+		**Build date:** $(date)
+		
+		## Files included:
+		EOF
+        
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "client" ]]; then
+          echo "- client.py" >> README.md
+        fi
+        
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "server" ]]; then
+          echo "- server.py" >> README.md
+        fi
+    
+    - name: Build wheel package
+      if: ${{ github.event.inputs.package_format == 'wheel' || github.event.inputs.package_format == 'both' }}
+      run: python -m build
+    
+    - name: Build ZIP package
+      if: ${{ github.event.inputs.package_format == 'zip' || github.event.inputs.package_format == 'both' }}
+      run: |
+        # Создаем информационный файл
+        echo "TERMLOCAL v${{ github.event.inputs.version }}" > VERSION.txt
+        echo "Components: ${{ github.event.inputs.components }}" >> VERSION.txt
+        echo "Build date: $(date)" >> VERSION.txt
+        
+        # Создаем ZIP с выбранными файлами
+        FILES="VERSION.txt"
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "client" ]]; then
+          if [ -f client.py ]; then
+            FILES="$FILES client.py"
+          fi
+        fi
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "server" ]]; then
+          if [ -f server.py ]; then
+            FILES="$FILES server.py"
+          fi
+        fi
+        
+        # Пакуем
+        zip -r termlocal-v${{ github.event.inputs.version }}-${{ github.event.inputs.components }}.zip $FILES
+    
+    - name: Build Linux/Unix binaries
+      if: ${{ github.event.inputs.package_format == 'binaries' }}
+      run: |
+        # Создаем папку для бинарников
+        mkdir -p dist/binaries/linux
+        
+        # Сборка клиента
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "client" ]]; then
+          echo "Building client binary for Linux..."
+          pyinstaller --onefile --name termlocal-client client.py
+          cp dist/termlocal-client dist/binaries/linux/
+        fi
+        
+        # Сборка сервера
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "server" ]]; then
+          echo "Building server binary for Linux..."
+          pyinstaller --onefile --name termlocal-server server.py
+          cp dist/termlocal-server dist/binaries/linux/
+        fi
+        
+        # Создаем архив с бинарниками
+        cd dist/binaries
+        tar -czf termlocal-linux-v${{ github.event.inputs.version }}.tar.gz linux/
+        cd ../..
+    
+    - name: Build Windows executable
+      if: ${{ github.event.inputs.package_format == 'binaries' }}
+      run: |
+        # Устанавливаем зависимости для кросс-компиляции
+        pip install pyinstaller
+        
+        # Создаем папку для Windows бинарников
+        mkdir -p dist/binaries/windows
+        
+        # Сборка клиента для Windows
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "client" ]]; then
+          echo "Building client executable for Windows..."
+          pyinstaller --onefile --name termlocal-client.exe client.py
+          cp dist/termlocal-client.exe dist/binaries/windows/
+        fi
+        
+        # Сборка сервера для Windows
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "server" ]]; then
+          echo "Building server executable for Windows..."
+          pyinstaller --onefile --name termlocal-server.exe server.py
+          cp dist/termlocal-server.exe dist/binaries/windows/
+        fi
+        
+        # Создаем архив с Windows бинарниками
+        cd dist/binaries
+        zip -r termlocal-windows-v${{ github.event.inputs.version }}.zip windows/
+        cd ../..
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: termlocal-v${{ github.event.inputs.version }}-${{ github.event.inputs.components }}
+        path: |
+          dist/
+          *.zip
+        if-no-files-found: warn
+    
+    - name: Create release info
+      run: |
+        echo "## Build Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version:** ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Components:** ${{ github.event.inputs.components }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Format:** ${{ github.event.inputs.package_format }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Build time:** $(date)" >> $GITHUB_STEP_SUMMARY
+        
+        if [[ "${{ github.event.inputs.package_format }}" == "binaries" ]]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Binaries built:" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux/Unix binaries (tar.gz)" >> $GITHUB_STEP_SUMMARY
+          echo "- Windows executables (zip)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To run on Linux:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "tar -xzf termlocal-linux-v${{ github.event.inputs.version }}.tar.gz" >> $GITHUB_STEP_SUMMARY
+          echo "cd linux" >> $GITHUB_STEP_SUMMARY
+          echo "./termlocal-server  # запуск сервера" >> $GITHUB_STEP_SUMMARY
+          echo "./termlocal-client  # запуск клиента" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To run on Windows:" >> $GITHUB_STEP_SUMMARY
+          echo "- Распакуй termlocal-windows-v${{ github.event.inputs.version }}.zip" >> $GITHUB_STEP_SUMMARY
+          echo "- Запусти termlocal-server.exe или termlocal-client.exe" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        # Сборка сервера
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "server" ]]; then
+          echo "Building server binary for Linux..."
+          pyinstaller --onefile --name termlocal-server server.py
+          cp dist/termlocal-server dist/binaries/linux/
+        fi
+        
+        # Создаем архив с бинарниками
+        cd dist/binaries
+        tar -czf termlocal-linux-v${{ github.event.inputs.version }}.tar.gz linux/
+        cd ../..
+    
+    - name: Build Windows executable
+      if: ${{ github.event.inputs.package_format == 'binaries' }}
+      run: |
+        # Устанавливаем зависимости для кросс-компиляции
+        pip install pyinstaller
+        
+        # Создаем папку для Windows бинарников
+        mkdir -p dist/binaries/windows
+        
+        # Сборка клиента для Windows
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "client" ]]; then
+          echo "Building client executable for Windows..."
+          pyinstaller --onefile --name termlocal-client.exe client.py
+          cp dist/termlocal-client.exe dist/binaries/windows/
+        fi
+        
+        # Сборка сервера для Windows
+        if [[ "${{ github.event.inputs.components }}" == "all" || "${{ github.event.inputs.components }}" == "server" ]]; then
+          echo "Building server executable for Windows..."
+          pyinstaller --onefile --name termlocal-server.exe server.py
+          cp dist/termlocal-server.exe dist/binaries/windows/
+        fi
+        
+        # Создаем архив с Windows бинарниками
+        cd dist/binaries
+        zip -r termlocal-windows-v${{ github.event.inputs.version }}.zip windows/
+        cd ../..
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: termlocal-v${{ github.event.inputs.version }}-${{ github.event.inputs.components }}
+        path: |
+          dist/
+          *.zip
+        if-no-files-found: warn
+    
+    - name: Create release info
+      run: |
+        echo "## Build Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version:** ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Components:** ${{ github.event.inputs.components }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Format:** ${{ github.event.inputs.package_format }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Build time:** $(date)" >> $GITHUB_STEP_SUMMARY
+        
+        if [[ "${{ github.event.inputs.package_format }}" == "binaries" ]]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Binaries built:" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux/Unix binaries (tar.gz)" >> $GITHUB_STEP_SUMMARY
+          echo "- Windows executables (zip)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To run on Linux:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "tar -xzf termlocal-linux-v${{ github.event.inputs.version }}.tar.gz" >> $GITHUB_STEP_SUMMARY
+          echo "cd linux" >> $GITHUB_STEP_SUMMARY
+          echo "./termlocal-server  # запуск сервера" >> $GITHUB_STEP_SUMMARY
+          echo "./termlocal-client  # запуск клиента" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To run on Windows:" >> $GITHUB_STEP_SUMMARY
+          echo "- Распакуй termlocal-windows-v${{ github.event.inputs.version }}.zip" >> $GITHUB_STEP_SUMMARY
+          echo "- Запусти termlocal-server.exe или termlocal-client.exe" >> $GITHUB_STEP_SUMMARY
+        fi
