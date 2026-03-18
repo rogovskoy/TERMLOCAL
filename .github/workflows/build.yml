@@ -113,7 +113,7 @@ jobs:
         description = "TERMLOCAL package"
         readme = "README.md"
         authors = [
-          {name = "rogovskoy", email = ""}
+          {name = "rogovskoy", email = "iplaton12@ro.ru"}
         ]
         license = {text = "MIT"}
         classifiers = [
